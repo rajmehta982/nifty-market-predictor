@@ -191,13 +191,3 @@ with col2:
         value='Gini'
         
     )
-
-
-    
-
-
-
-
-
-
-

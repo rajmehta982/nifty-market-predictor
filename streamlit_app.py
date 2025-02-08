@@ -1,11 +1,17 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import math
 from pathlib import Path
+from datetime import datetime
+import yfinance as yf
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from dateutil.relativedelta import relativedelta
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
-    page_title='GDP dashboard',
+    page_title='NIFTY 50 Predictor',
     page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
 )
 
@@ -13,7 +19,7 @@ st.set_page_config(
 # Declare some useful functions.
 
 @st.cache_data
-def get_gdp_data():
+def get_market_data():
     """Grab GDP data from a CSV file.
 
     This uses caching to avoid having to read the file every time. If we were
@@ -22,130 +28,151 @@ def get_gdp_data():
     """
 
     # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+    DATA_FILENAME = Path(__file__).parent/'data/NIFTY 50_Historical_PR_01021990to06022025.csv'
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+    nifty_historical = pd.read_csv(DATA_FILENAME)
+    nifty_historical['Date'] = pd.to_datetime(nifty_historical['Date'])
+    nifty_historical = nifty_historical.set_index('Date').resample('ME').ffill()
+    nifty_historical = nifty_historical[:'2007-10-01']
+    nifty_historical  = pd.DataFrame(nifty_historical['Close'])
+    nifty_historical = nifty_historical.rename(columns = {'Close': '^NSEI'})
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+    # Define ticker and date rangticker = "BSE-500.BO"
+    start_date = "1980-01-01"
+    end_date = datetime.today().strftime('%Y-%m-%d')
+    ticker = '^NSEI'
+    # Download data
+    data = yf.download(ticker, start=start_date, end=end_date, interval="1mo")
+    # Keep only the closing prices
+    data = data[['Close']]
+    yf_market_data = data['Close'].resample('ME').last()
+    market_data = pd.concat([nifty_historical, yf_market_data], axis=0)
 
-    return gdp_df
+    return market_data
 
-gdp_df = get_gdp_data()
+def create_momentum_features(market_data):
+    windows = [1, 3, 6, 9, 12]
+
+    market_data['momentum_1_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(1)
+    market_data['momentum_3_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(3)
+    market_data['momentum_6_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(6)
+    market_data['momentum_9_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(9)
+    market_data['momentum_12_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(12)
+
+def train_model(market_data):
+    initial_value = 100
+    market_data['Return'] = market_data['^NSEI'].pct_change()
+    market_data['Portfolio'] = initial_value * (1 + market_data['Return']).cumprod()
+    market_data['Portfolio'].iloc[0] = initial_value
+    market_data['next_month_return'] = market_data['Return'].shift(1)
+    market_data.dropna(inplace=True)
+    market_data['positive_returns'] = (market_data['next_month_return'] > -0.02).astype(int)
+
+    X_final = market_data[['momentum_1_1', 'momentum_3_1', 'momentum_6_1', 'momentum_9_1', 'momentum_12_1']].iloc[:-1]
+    y_final = market_data['positive_returns'].iloc[:-1]
+
+    # Initialize the Random Forest Classifier
+    clf = RandomForestClassifier(n_estimators=10, random_state=42)
+
+    # Define k-fold cross-validation (-fold)
+    kfold = StratifiedKFold(n_splits=5, shuffle=False)
+
+    # Perform cross-validation
+    cv_scores = cross_val_score(clf, X_final, y_final, cv=kfold, scoring='accuracy')
+
+    # Train the model
+    clf.fit(X_final, y_final)
+
+    return cv_scores, clf
+
+    # Output results
+    # print(f"Cross-Validation Scores: {cv_scores}")
+    # print(f"Mean Accuracy: {np.mean(cv_scores):.4f}")
+    # print(f"Standard Deviation: {np.std(cv_scores):.4f}")
+
+def make_predictions(clf, market_data):
+    last_month = np.array(market_data[['momentum_1_1', 'momentum_3_1', 'momentum_6_1', 'momentum_9_1', 'momentum_12_1']].iloc[-1]).reshape(1,-1)
+    final_prediction = clf.predict(last_month)
+
+    return final_prediction
+
+market_data = get_market_data()
+create_momentum_features(market_data)
+cv_scores, clf = train_model(market_data)
+final_prediction = make_predictions(clf, market_data)
+
+# Creating the UI
+st.title("Momentum-based NIFTY 50 Prediction Model")
+st.markdown(
+    "A random forest model trained on momentum features created from 30+ years"
+    "of monthly NIFTY 50 returns. It predicts whether NIFTY 50 could fall by more than 2% next month."
+)
 
 # -----------------------------------------------------------------------------
 # Draw the actual page
-
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
-
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
+st.header('NIFTY 50 Historical Monthly Close Price (from July 1991)', divider='gray')
 st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
+    market_data,
+    y='^NSEI',
+    color="#ffaa00",
 )
 
-''
-''
+last_date = market_data.index[-1]
+# Get next month's datetime
+next_month_dt = last_date + relativedelta(months=1)
+# Get full month name
+next_month_name = next_month_dt.strftime("%B")
+
+st.header(f'Prediction for {next_month_name}', divider='gray')
+
+if final_prediction[0] == 0:
+    st.metric(
+        label='Prediction',
+        value='Sell',
+        
+    )
+else:
+    st.metric(
+        label='Prediction',
+        value='Buy'
+        
+    )
 
 
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
+st.header('Model Metrics', divider='gray')
 
-st.header(f'GDP in {to_year}', divider='gray')
+st.metric(
+    label=f'Model',
+    value=f'Random Forest',
+    
+)
 
-''
+st.metric(
+    label=f'Number of Months of Training Data',
+    value=f'{len(market_data.iloc[:-1])}',
+    
+)
 
-cols = st.columns(4)
+st.metric(
+    label=f'Training Method',
+    value=f'5-fold Cross Validation',
+    
+)
 
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
 
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
+st.metric(
+    label=f'Mean Accuracy of Predictions',
+    value=f'{np.mean(cv_scores)*100:.2f}%',
+    
+)
 
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
+st.metric(
+    label=f'Standard Deviation of Predictions',
+    value=f'{np.std(cv_scores)*100:.2f}%',
+    
+)
 
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+
+
+

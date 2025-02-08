@@ -105,8 +105,7 @@ final_prediction = make_predictions(clf, market_data)
 # Creating the UI
 st.title("Momentum-based NIFTY 50 Prediction Model")
 st.markdown(
-    "A random forest model trained on momentum features created from 30+ years"
-    "of monthly NIFTY 50 returns. It predicts whether NIFTY 50 could fall by more than 2% next month."
+    "A random forest model trained on momentum features created from 30+ years of monthly NIFTY 50 returns. It uses 1, 3, 6, 9, and 12 month momntum as predictiors for next month market returns. It predicts whether NIFTY 50 could fall by more than 2% next month."
 )
 
 # -----------------------------------------------------------------------------
@@ -119,6 +118,7 @@ st.line_chart(
 )
 
 last_date = market_data.index[-1]
+current_month_name = last_date.strftime("%B")
 # Get next month's datetime
 next_month_dt = last_date + relativedelta(months=1)
 # Get full month name
@@ -140,38 +140,63 @@ else:
     )
 
 
-st.header('Model Metrics', divider='gray')
-
-st.metric(
-    label=f'Model',
-    value=f'Random Forest',
+col1, col2 = st.columns(2)
+with col1:
+    st.header('Model Training Metrics', divider='gray')
     
-)
+    st.metric(
+        label=f'Number of Months of Training Data',
+        value=f'{len(market_data.iloc[:-1])}'
+        
+    )
+    st.metric(
+        label=f'Training Method',
+        value=f'5-fold cross validation'
+        
+    )
+    st.metric(
+        label=f'Last Month in Training Data',
+        value=current_month_name
+        
+    )
 
-st.metric(
-    label=f'Number of Months of Training Data',
-    value=f'{len(market_data.iloc[:-1])}',
+    st.metric(
+        label=f'Mean Accuracy of Predictions',
+        value=f'{np.mean(cv_scores)*100:.2f}%',
+        
+    )
+
+    st.metric(
+        label=f'Standard Deviation of Predictions',
+        value=f'{np.std(cv_scores)*100:.2f}%',
+        
+    )
+
+with col2:
+    st.header('Model Info', divider='gray')
+    st.metric(
+        label=f'Model',
+        value=f'Random Forest'
+        
+    )
+
+    st.metric(
+        label='Number of estimators',
+        value=10
+        
+    )
+
+    st.metric(
+        label='Split Criterion',
+        value='Gini'
+        
+    )
+
+
     
-)
-
-st.metric(
-    label=f'Training Method',
-    value=f'5-fold Cross Validation',
-    
-)
 
 
-st.metric(
-    label=f'Mean Accuracy of Predictions',
-    value=f'{np.mean(cv_scores)*100:.2f}%',
-    
-)
 
-st.metric(
-    label=f'Standard Deviation of Predictions',
-    value=f'{np.std(cv_scores)*100:.2f}%',
-    
-)
 
 
 

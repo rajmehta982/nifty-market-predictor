@@ -43,13 +43,14 @@ def get_market_data():
     end_date = datetime.today().strftime('%Y-%m-%d')
     ticker = '^NSEI'
     # Download data
-    data = yf.download(ticker, start=start_date, end=end_date, interval="1mo")
+    data = yf.download(ticker, start=start_date, end=end_date, interval="1d")
+    last_date_data = data.index[-1]
     # Keep only the closing prices
     data = data[['Close']]
     yf_market_data = data['Close'].resample('ME').last()
     market_data = pd.concat([nifty_historical, yf_market_data], axis=0)
 
-    return market_data
+    return market_data, last_date_data
 
 def create_momentum_features(market_data):
     windows = [1, 3, 6, 9, 12]
@@ -97,7 +98,7 @@ def make_predictions(clf, market_data):
 
     return final_prediction
 
-market_data = get_market_data()
+market_data, last_date_data = get_market_data()
 create_momentum_features(market_data)
 cv_scores, clf = train_model(market_data)
 final_prediction = make_predictions(clf, market_data)
@@ -124,7 +125,7 @@ next_month_dt = last_date + relativedelta(months=1)
 # Get full month name
 next_month_name = next_month_dt.strftime("%B")
 
-st.header(f'Prediction for {next_month_name}', divider='gray')
+st.header(f'Prediction for {next_month_name} end', divider='gray')
 
 if final_prediction[0] == 0:
     st.metric(
@@ -138,11 +139,14 @@ else:
         value='Buy'
         
     )
+st.markdown(
+    "The buy or sell call tells whether the model predicts the market to fall more than 2% by the end of next month. The model is re-trained everyday with latest daily price for NIFTY and prediction is updated as well."
+)
 
 
 col1, col2 = st.columns(2)
 with col1:
-    st.header('Model Training Metrics', divider='gray')
+    st.header('Training Metrics', divider='gray')
     
     st.metric(
         label=f'Number of Months of Training Data',
@@ -155,8 +159,8 @@ with col1:
         
     )
     st.metric(
-        label=f'Last Month in Training Data',
-        value=current_month_name
+        label=f'Last Available Price On',
+        value=last_date_data.strftime("%B %d, %Y")
         
     )
 

@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import math
 from pathlib import Path
 from datetime import datetime
 import yfinance as yf
@@ -29,6 +28,10 @@ def get_market_data():
 
     # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
     DATA_FILENAME = Path(__file__).parent/'data/NIFTY 50_Historical_PR_01021990to06022025.csv'
+    USD_INR_FILENAME = Path(__file__).parent/'data/USD_INR.csv'
+    CAPE_FILENAME = Path(__file__).parent/'data/india_cape.csv'
+    start_date = "1980-01-01"
+    end_date = datetime.today().strftime('%Y-%m-%d')
 
     nifty_historical = pd.read_csv(DATA_FILENAME)
     nifty_historical['Date'] = pd.to_datetime(nifty_historical['Date'])
@@ -37,10 +40,6 @@ def get_market_data():
     nifty_historical  = pd.DataFrame(nifty_historical['Close'])
     nifty_historical = nifty_historical.rename(columns = {'Close': '^NSEI'})
 
-
-    # Define ticker and date rangticker = "BSE-500.BO"
-    start_date = "1980-01-01"
-    end_date = datetime.today().strftime('%Y-%m-%d')
     ticker = '^NSEI'
     # Download data
     data = yf.download(ticker, start=start_date, end=end_date, interval="1d")
@@ -49,6 +48,28 @@ def get_market_data():
     data = data[['Close']]
     yf_market_data = data['Close'].resample('ME').last()
     market_data = pd.concat([nifty_historical, yf_market_data], axis=0)
+
+    #CAPE Data
+    cape = pd.read_csv(CAPE_FILENAME)
+    cape['Date'] = pd.to_datetime(cape['Date'])
+    cape = cape.set_index('Date').resample('ME').last()
+    market_data = pd.merge(market_data,cape['BSE Sensex CAPE 5'], left_index=True, right_index=True, how='left')
+
+    # USD INR Exchange Data
+    fred_data = pd.read_csv(USD_INR_FILENAME)
+    fred_data['Date'] = pd.to_datetime(fred_data['Date'], format='%d-%m-%Y')
+    fred_data = fred_data.set_index('Date').resample('ME').last()
+    fred_data = fred_data[:'2003-11-30']
+    fred_data  = pd.DataFrame(fred_data['USD/INR'])
+    fred_data = fred_data.rename(columns = {'USD/INR': 'USDINR=X'})  
+    # Download data
+    usd_inr = yf.download('USDINR=X', start=start_date, end=end_date, interval="1d")
+
+    # Keep only the closing prices
+    usd_inr = usd_inr[['Close']]
+    usd_inr = usd_inr.resample('ME').last()
+    usd_inr = pd.concat([fred_data,usd_inr['Close']], axis=0)
+    market_data = pd.merge(market_data, usd_inr['USDINR=X'], left_index=True, right_index=True, how='left')
 
     return market_data, last_date_data
 
@@ -61,6 +82,10 @@ def create_momentum_features(market_data):
     market_data['momentum_9_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(9)
     market_data['momentum_12_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(12)
 
+    for window in windows:
+        column_name = 'momentum_' + str(window) + '_USDINR'
+        market_data[column_name] = market_data['USDINR=X'] / market_data['USDINR=X'].shift(window)
+
 def train_model(market_data):
     initial_value = 100
     market_data['Return'] = market_data['^NSEI'].pct_change()
@@ -70,7 +95,11 @@ def train_model(market_data):
     market_data.dropna(inplace=True)
     market_data['positive_returns'] = (market_data['next_month_return'] > -0.02).astype(int)
 
-    X_final = market_data[['momentum_1_1', 'momentum_3_1', 'momentum_6_1', 'momentum_9_1', 'momentum_12_1']].iloc[:-1]
+    training_columns = ['momentum_1_1',
+       'momentum_3_1', 'momentum_6_1', 'momentum_9_1', 'momentum_12_1','BSE Sensex CAPE 5','momentum_1_USDINR', 'momentum_3_USDINR',
+       'momentum_6_USDINR', 'momentum_9_USDINR', 'momentum_12_USDINR']
+
+    X_final = market_data[training_columns].iloc[:-1]
     y_final = market_data['positive_returns'].iloc[:-1]
 
     # Initialize the Random Forest Classifier
@@ -93,7 +122,10 @@ def train_model(market_data):
     # print(f"Standard Deviation: {np.std(cv_scores):.4f}")
 
 def make_predictions(clf, market_data):
-    last_month = np.array(market_data[['momentum_1_1', 'momentum_3_1', 'momentum_6_1', 'momentum_9_1', 'momentum_12_1']].iloc[-1]).reshape(1,-1)
+    training_columns = ['momentum_1_1',
+       'momentum_3_1', 'momentum_6_1', 'momentum_9_1', 'momentum_12_1','BSE Sensex CAPE 5','momentum_1_USDINR', 'momentum_3_USDINR',
+       'momentum_6_USDINR', 'momentum_9_USDINR', 'momentum_12_USDINR']
+    last_month = np.array(market_data[training_columns].iloc[-1]).reshape(1,-1)
     final_prediction = clf.predict(last_month)
 
     return final_prediction
@@ -193,6 +225,12 @@ with col2:
     st.metric(
         label='Split Criterion',
         value='Gini'
+        
+    )
+
+    st.metric(
+        label='Features Used',
+        value='Momentum, USD-INR Exchnage Rate, BSE 5 Years CAPE'
         
     )
 

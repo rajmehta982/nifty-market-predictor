@@ -55,7 +55,6 @@ def get_market_data():
     cape = pd.read_csv(url)
     cape['Date'] = pd.to_datetime(cape['Date'])
     cape = cape.set_index('Date').resample('ME').last()
-    cape.head()
     market_data = pd.merge(market_data,cape['BSE Sensex CAPE 5'], left_index=True, right_index=True, how='left')
 
     # USD INR Exchange Data

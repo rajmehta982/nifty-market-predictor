@@ -29,7 +29,6 @@ def get_market_data():
     # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
     DATA_FILENAME = Path(__file__).parent/'data/NIFTY 50_Historical_PR_01021990to06022025.csv'
     USD_INR_FILENAME = Path(__file__).parent/'data/USD_INR.csv'
-    CAPE_FILENAME = Path(__file__).parent/'data/india_cape.csv'
     start_date = "1980-01-01"
     end_date = datetime.today().strftime('%Y-%m-%d')
 
@@ -50,9 +49,13 @@ def get_market_data():
     market_data = pd.concat([nifty_historical, yf_market_data], axis=0)
 
     #CAPE Data
-    cape = pd.read_csv(CAPE_FILENAME)
+    sheet_id = "1ZcT4v4PzjwACcbzmwYXGwxLMRXtuQGwsSEPyONMcfcU"
+    sheet_name = "Sheet1"  # or your specific sheet name
+    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+    cape = pd.read_csv(url)
     cape['Date'] = pd.to_datetime(cape['Date'])
     cape = cape.set_index('Date').resample('ME').last()
+    cape.head()
     market_data = pd.merge(market_data,cape['BSE Sensex CAPE 5'], left_index=True, right_index=True, how='left')
 
     # USD INR Exchange Data
@@ -192,7 +195,7 @@ with col1:
     )
     st.metric(
         label=f'Last Available Price On',
-        value=last_date_data.strftime("%B %d, %Y")
+        value=last_date.strftime("%B %d, %Y")
         
     )
 

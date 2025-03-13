@@ -7,6 +7,7 @@ import yfinance as yf
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from dateutil.relativedelta import relativedelta
+import plotly.express as px
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
@@ -139,15 +140,12 @@ def get_portfolio_data(month_start):
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
     portfolio_data = pd.read_csv(url)
 
-    # Convert date column to datetime
-    portfolio_data["Portfolio Date"] = pd.to_datetime(portfolio_data["Portfolio Date"])
-
     # Group data by month
     return portfolio_data
 
 today = datetime.today()
 # Convert to the first day of the current month
-month_start = pd.to_datetime(today).replace(day=1)
+month_start = pd.to_datetime(today).replace(day=1).strftime("%d-%m-%Y")
 portfolio_data  = get_portfolio_data(month_start)
 current_portfolio = portfolio_data[portfolio_data['Portfolio Date'] == month_start]
 

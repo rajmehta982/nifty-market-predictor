@@ -7,8 +7,6 @@ import yfinance as yf
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from dateutil.relativedelta import relativedelta
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(

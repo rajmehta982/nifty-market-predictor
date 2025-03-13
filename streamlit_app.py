@@ -147,19 +147,21 @@ today = datetime.today()
 month_start = pd.to_datetime(today).replace(day=1).strftime("%d-%m-%Y")
 portfolio_data  = get_portfolio_data(month_start)
 current_portfolio = portfolio_data[portfolio_data['Portfolio Date'] == month_start]
+today_month_name = month_start.strftime("%B")
 
 # Display portfolio table
-st.subheader("📋 Current Month Portfolio (Holdings & Weights)")
-st.table(current_portfolio[['Holding', 'Weight']].reset_index(drop=True))
+st.title("Quant India - Systematic Equities Strategy for Retail Indian Investors")
 
+st.subheader(f"📋 Current Portfolio ({today_month_name})")
+st.table(current_portfolio[['Holding', 'Weight']].reset_index(drop=True))
 
 market_data, last_date_data = get_market_data()
 create_momentum_features(market_data)
 cv_scores, clf = train_model(market_data)
 final_prediction = make_predictions(clf, market_data)
 
-# Creating the UI
-st.title("Momentum-based NIFTY 50 Prediction Model")
+# Prediction Model
+st.subheader("Momentum-based NIFTY 50 Prediction Model")
 st.markdown(
     "A random forest model trained on momentum features created from 30+ years of monthly NIFTY 50 returns. It uses 1, 3, 6, 9, and 12 month momntum as predictiors for next month market returns. It predicts whether NIFTY 50 could fall by more than 2% next month."
 )

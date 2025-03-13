@@ -174,7 +174,7 @@ st.markdown(
 
 # -----------------------------------------------------------------------------
 # Draw the actual page
-st.header('NIFTY 50 Historical Monthly Close Price (from July 1991)', divider='gray')
+st.subheader('NIFTY 50 Historical Monthly Close Price (from July 1991)', divider='gray')
 st.line_chart(
     market_data,
     y='^NSEI',
@@ -188,7 +188,7 @@ next_month_dt = last_date + relativedelta(months=1)
 # Get full month name
 next_month_name = next_month_dt.strftime("%B")
 
-st.header(f'Prediction for {next_month_name} end', divider='gray')
+st.subheader(f'Prediction for {next_month_name} end', divider='gray')
 
 if final_prediction[0] == 0:
     st.metric(
@@ -209,7 +209,7 @@ st.markdown(
 
 col1, col2 = st.columns(2)
 with col1:
-    st.header('Training Metrics', divider='gray')
+    st.subheader('Training Metrics', divider='gray')
     
     st.metric(
         label=f'Number of Months of Training Data',
@@ -240,7 +240,7 @@ with col1:
     )
 
 with col2:
-    st.header('Model Info', divider='gray')
+    st.subheader('Model Info', divider='gray')
     st.metric(
         label=f'Model',
         value=f'Random Forest'

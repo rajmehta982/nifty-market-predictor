@@ -152,9 +152,14 @@ current_portfolio = portfolio_data[portfolio_data['Portfolio Date'] == month_sta
 
 # Display portfolio table
 st.title("Quant India - Systematic Equities Strategy for Retail Indian Investors")
+st.markdown(
+    "The ‘Quant India’ strategy primarily serves two purposes: 1) Asset Allocation: Avoid large drawdowns through effective asset allocation during bear markets 2) Stock Picking: Make the most of bull markets by creating a portfolio of 20 stocks based on quality and momentum features"
+)
+st.markdown('<a href="https://quantindia.substack.com/p/quant-india-a-systematic-equities" target="_blank">View Full Strategy Details</a>', unsafe_allow_html=True)
 
 st.subheader(f"📋 Current Portfolio ({today_month_name})")
 st.table(current_portfolio[['Holding', 'Weight']].reset_index(drop=True))
+st.markdown('<a href="https://docs.google.com/spreadsheets/d/10cMWuCXMb5-7tgaHWS5Ef-D0rNNhWSvgElVnY8f4t2c/edit?usp=drive_link" target="_blank">View Full Historical Portfolio</a>', unsafe_allow_html=True)
 
 market_data, last_date_data = get_market_data()
 create_momentum_features(market_data)

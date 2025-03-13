@@ -170,7 +170,7 @@ fig = px.pie(
 st.subheader("Portfolio Value Over Time")
 
 # Sum total value by date
-value_over_time = data.groupby("Portfolio Date")["Portfolio Value"].sum().reset_index()
+value_over_time = portfolio_data.groupby("Portfolio Date")["Portfolio Value"].sum().reset_index()
 
 # Line Plot
 fig2, ax2 = plt.subplots()

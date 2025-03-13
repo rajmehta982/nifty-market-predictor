@@ -142,12 +142,13 @@ def get_portfolio_data(month_start):
     # Group data by month
     return portfolio_data
 
-today = datetime.today()
 # Convert to the first day of the current month
+today = datetime.today()
 month_start = pd.to_datetime(today).replace(day=1).strftime("%d-%m-%Y")
+today_month_name = pd.to_datetime(today).replace(day=1).strftime("%B")
+
 portfolio_data  = get_portfolio_data(month_start)
 current_portfolio = portfolio_data[portfolio_data['Portfolio Date'] == month_start]
-today_month_name = month_start.strftime("%B")
 
 # Display portfolio table
 st.title("Quant India - Systematic Equities Strategy for Retail Indian Investors")

@@ -132,6 +132,56 @@ def make_predictions(clf, market_data):
 
     return final_prediction
 
+@st.cache_data
+def get_portfolio_data(month_start):
+    sheet_id = "10cMWuCXMb5-7tgaHWS5Ef-D0rNNhWSvgElVnY8f4t2c"
+    sheet_name = "Holdings"  # or your specific sheet name
+    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+    portfolio_data = pd.read_csv(url)
+
+    # Convert date column to datetime
+    portfolio_data["Portfolio Date"] = pd.to_datetime(portfolio_data["Portfolio Date"])
+
+    # Group data by month
+    return portfolio_data
+
+today = datetime.today()
+# Convert to the first day of the current month
+month_start = pd.to_datetime(today).replace(day=1)
+portfolio_data  = get_portfolio_data(month_start)
+current_portfolio = portfolio_data[portfolio_data['Portfolio Date'] == month_start]
+
+# Display portfolio table
+st.subheader("📋 Current Month Portfolio (Holdings & Weights)")
+st.table(current_portfolio[['Holding', 'Weight']].reset_index(drop=True))
+
+# Display pie chart of allocation
+st.subheader("📊 Portfolio Allocation - Pie Chart")
+fig = px.pie(
+    current_portfolio,
+    names='Holding',
+    values='Weight',
+    title='Allocation by Weight',
+    hole=0.4  # Donut style
+)
+
+
+# Portfolio Value over Time
+st.subheader("Portfolio Value Over Time")
+
+# Sum total value by date
+value_over_time = data.groupby("Portfolio Date")["Portfolio Value"].sum().reset_index()
+
+# Line Plot
+fig2, ax2 = plt.subplots()
+sns.lineplot(data=value_over_time, x="Portfolio Date", y="Portfolio Value", marker="o", ax=ax2)
+ax2.set_title("Portfolio Value Growth Over Time")
+ax2.set_ylabel("Total Portfolio Value")
+ax2.set_xlabel("Date")
+plt.xticks(rotation=45)
+st.pyplot(fig2)
+
+
 market_data, last_date_data = get_market_data()
 create_momentum_features(market_data)
 cv_scores, clf = train_model(market_data)

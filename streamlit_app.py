@@ -7,7 +7,8 @@ import yfinance as yf
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from dateutil.relativedelta import relativedelta
-import plotly.express as px
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
@@ -152,32 +153,6 @@ current_portfolio = portfolio_data[portfolio_data['Portfolio Date'] == month_sta
 # Display portfolio table
 st.subheader("📋 Current Month Portfolio (Holdings & Weights)")
 st.table(current_portfolio[['Holding', 'Weight']].reset_index(drop=True))
-
-# Display pie chart of allocation
-st.subheader("📊 Portfolio Allocation - Pie Chart")
-fig = px.pie(
-    current_portfolio,
-    names='Holding',
-    values='Weight',
-    title='Allocation by Weight',
-    hole=0.4  # Donut style
-)
-
-
-# Portfolio Value over Time
-st.subheader("Portfolio Value Over Time")
-
-# Sum total value by date
-value_over_time = portfolio_data.groupby("Portfolio Date")["Portfolio Value"].sum().reset_index()
-
-# Line Plot
-fig2, ax2 = plt.subplots()
-sns.lineplot(data=value_over_time, x="Portfolio Date", y="Portfolio Value", marker="o", ax=ax2)
-ax2.set_title("Portfolio Value Growth Over Time")
-ax2.set_ylabel("Total Portfolio Value")
-ax2.set_xlabel("Date")
-plt.xticks(rotation=45)
-st.pyplot(fig2)
 
 
 market_data, last_date_data = get_market_data()

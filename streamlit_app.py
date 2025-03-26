@@ -157,6 +157,14 @@ st.markdown(
 )
 st.markdown('<a href="https://quantindia.substack.com/p/quant-india-a-systematic-equities" target="_blank">View Full Strategy Details</a>', unsafe_allow_html=True)
 
+st.subheader("Quantitative Factor Portfolio Methodology")
+st.markdown("Version 1.0.0")
+st.markdown(
+    "The quantitative factor portfolio methodology is a rule-based algorithm that creates a portfolio of 20 stocks which is updated every month. These stocks are ranked and picked based on momentum, size, and quality signals "
+)
+st.markdown('<a href="https://quantindia.substack.com/p/constructing-a-quantitative-factor?r=5b2z4i" target="_blank">View Methodology Details</a>', unsafe_allow_html=True)
+
+
 st.subheader(f"📋 Current Portfolio ({today_month_name})")
 st.table(current_portfolio[['Holding', 'Weight']].reset_index(drop=True))
 st.markdown('<a href="https://docs.google.com/spreadsheets/d/10cMWuCXMb5-7tgaHWS5Ef-D0rNNhWSvgElVnY8f4t2c/edit?usp=drive_link" target="_blank">View Full Historical Portfolio</a>', unsafe_allow_html=True)

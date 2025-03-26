@@ -247,6 +247,11 @@ with col1:
 with col2:
     st.subheader('Model Info', divider='gray')
     st.metric(
+        label=f'Version',
+        value=f'1.0.1'
+        
+    )
+    st.metric(
         label=f'Model',
         value=f'Random Forest'
         
@@ -263,13 +268,6 @@ with col2:
         value='Gini'
         
     )
-
-    st.metric(
-        label='Features Used',
-        value='Momentum, USD-INR Exchnage Rate, BSE 5 Years CAPE'
-        
-    )
-
 
     
 

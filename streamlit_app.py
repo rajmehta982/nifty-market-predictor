@@ -10,7 +10,7 @@ from dateutil.relativedelta import relativedelta
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
-    page_title='NIFTY 50 Predictor',
+    page_title='Quant India',
     page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
 )
 
@@ -76,19 +76,24 @@ def get_market_data():
     return market_data, last_date_data
 
 def create_momentum_features(market_data):
-    windows = [1, 3, 6, 9, 12]
+    windows = [1, 3, 6]
 
-    market_data['momentum_1_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(1)
+    # market_data['momentum_1_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(1)
     market_data['momentum_3_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(3)
     market_data['momentum_6_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(6)
-    market_data['momentum_9_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(9)
-    market_data['momentum_12_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(12)
+    # market_data['momentum_9_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(9)
+    # market_data['momentum_12_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(12)
 
     for window in windows:
         column_name = 'momentum_' + str(window) + '_USDINR'
         market_data[column_name] = market_data['USDINR=X'] / market_data['USDINR=X'].shift(window)
 
-def train_model(market_data):
+    for window in windows:
+        column_name = 'momentum_' + str(window) + '_CAPE'
+        market_data[column_name] = market_data['BSE Sensex CAPE 5'] / market_data['BSE Sensex CAPE 5'].shift(window)
+
+
+def train_model(market_data, training_columns):
     initial_value = 100
     market_data['Return'] = market_data['^NSEI'].pct_change()
     market_data['Portfolio'] = initial_value * (1 + market_data['Return']).cumprod()
@@ -97,9 +102,6 @@ def train_model(market_data):
     market_data.dropna(inplace=True)
     market_data['positive_returns'] = (market_data['next_month_return'] > -0.02).astype(int)
 
-    training_columns = ['momentum_1_1',
-       'momentum_3_1', 'momentum_6_1', 'momentum_9_1', 'momentum_12_1','BSE Sensex CAPE 5','momentum_1_USDINR', 'momentum_3_USDINR',
-       'momentum_6_USDINR', 'momentum_9_USDINR', 'momentum_12_USDINR']
 
     X_final = market_data[training_columns].iloc[:-1]
     y_final = market_data['positive_returns'].iloc[:-1]
@@ -123,10 +125,7 @@ def train_model(market_data):
     # print(f"Mean Accuracy: {np.mean(cv_scores):.4f}")
     # print(f"Standard Deviation: {np.std(cv_scores):.4f}")
 
-def make_predictions(clf, market_data):
-    training_columns = ['momentum_1_1',
-       'momentum_3_1', 'momentum_6_1', 'momentum_9_1', 'momentum_12_1','BSE Sensex CAPE 5','momentum_1_USDINR', 'momentum_3_USDINR',
-       'momentum_6_USDINR', 'momentum_9_USDINR', 'momentum_12_USDINR']
+def make_predictions(clf, market_data, training_columns):
     last_month = np.array(market_data[training_columns].iloc[-1]).reshape(1,-1)
     final_prediction = clf.predict(last_month)
 
@@ -143,6 +142,7 @@ def get_portfolio_data(month_start):
     return portfolio_data
 
 # Convert to the first day of the current month
+# Get necessary dates
 today = datetime.today()
 month_start = pd.to_datetime(today).replace(day=1).strftime("%d-%m-%Y")
 today_month_name = pd.to_datetime(today).replace(day=1).strftime("%B")
@@ -161,10 +161,15 @@ st.subheader(f"📋 Current Portfolio ({today_month_name})")
 st.table(current_portfolio[['Holding', 'Weight']].reset_index(drop=True))
 st.markdown('<a href="https://docs.google.com/spreadsheets/d/10cMWuCXMb5-7tgaHWS5Ef-D0rNNhWSvgElVnY8f4t2c/edit?usp=drive_link" target="_blank">View Full Historical Portfolio</a>', unsafe_allow_html=True)
 
+### Get data and train model
 market_data, last_date_data = get_market_data()
 create_momentum_features(market_data)
-cv_scores, clf = train_model(market_data)
-final_prediction = make_predictions(clf, market_data)
+
+training_columns = [
+       'momentum_3_1', 'momentum_6_1','momentum_3_USDINR',
+       'momentum_6_USDINR', 'momentum_1_CAPE','momentum_3_CAPE']
+cv_scores, clf = train_model(market_data, training_columns)
+final_prediction = make_predictions(clf, market_data, training_columns)
 
 # Prediction Model
 st.subheader("Momentum-based NIFTY 50 Prediction Model")
@@ -172,8 +177,7 @@ st.markdown(
     "A random forest model trained on momentum features created from 30+ years of monthly NIFTY 50 returns. It uses 1, 3, 6, 9, and 12 month momntum as predictiors for next month market returns. It predicts whether NIFTY 50 could fall by more than 2% next month."
 )
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
+# NIFTY 50 historical chart
 st.subheader('NIFTY 50 Historical Monthly Close Price (from July 1991)', divider='gray')
 st.line_chart(
     market_data,
@@ -205,6 +209,7 @@ else:
 st.markdown(
     "The buy or sell call tells whether the model predicts the market to fall more than 2% by the end of next month. The model is re-trained everyday with latest daily price for NIFTY and prediction is updated as well."
 )
+st.markdown('<a href="https://quantindia.substack.com/p/predicting-drawdowns-in-nifty-50?r=5b2z4i" target="_blank">View Methodology Details</a>', unsafe_allow_html=True)
 
 
 col1, col2 = st.columns(2)

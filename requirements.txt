@@ -2,4 +2,3 @@ streamlit
 pandas
 yfinance
 scikit-learn
-plotly

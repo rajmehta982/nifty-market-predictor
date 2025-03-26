@@ -227,7 +227,7 @@ with col1:
         
     )
     st.metric(
-        label=f'Last Available Price On',
+        label=f'Last Available Price Used',
         value=last_date.strftime("%B %d, %Y")
         
     )

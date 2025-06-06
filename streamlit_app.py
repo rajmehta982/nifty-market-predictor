@@ -8,6 +8,9 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from dateutil.relativedelta import relativedelta
 
+RISK_FREE_RATE = 0.06  # Annual risk-free rate
+MONTHS_IN_YEAR = 12
+
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
     page_title='Quant India',
@@ -137,12 +140,10 @@ def get_portfolio_data(month_start):
     sheet_name = "Holdings"  # or your specific sheet name
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
     portfolio_data = pd.read_csv(url)
+    portfolio_data['Portfolio Date'] = pd.to_datetime(portfolio_data['Portfolio Date'], format="%d-%m-%Y")
 
     # Group data by month
     return portfolio_data
-
-RISK_FREE_RATE = 0.06  # Annual risk-free rate
-MONTHS_IN_YEAR = 12
 
 # 1. Annualized Return
 def annualized_return(monthly_returns):
@@ -165,12 +166,15 @@ def sharpe_ratio(ann_return, ann_volatility):
 today = datetime.today()
 month_start = pd.to_datetime(today).replace(day=1).strftime("%d-%m-%Y")
 today_month_name = pd.to_datetime(today).replace(day=1).strftime("%B")
+today_year = pd.to_datetime(today).replace(day=1).strftime("%Y")
 
 portfolio_data  = get_portfolio_data(month_start)
-current_portfolio = portfolio_data[portfolio_data['Portfolio Date'] == month_start]
+current_portfolio = portfolio_data[
+    (portfolio_data['Portfolio Date'].dt.year == today.year) &
+    (portfolio_data['Portfolio Date'].dt.month == today.month)
+]
 
 return_df = portfolio_data[portfolio_data['Portfolio Return'].notna()]
-return_df["Portfolio Date"] = pd.to_datetime(return_df["Portfolio Date"], format="%d-%m-%Y")
 # Calculate metrics for Portfolio
 portfolio_returns = return_df['Portfolio Return']
 portfolio_ann_return = annualized_return(portfolio_returns)
@@ -220,15 +224,13 @@ st.subheader("Momentum-based NIFTY 50 Prediction Model")
 st.markdown(
     "A random forest model trained on momentum features created from 30+ years of monthly NIFTY 50 returns. It uses 1, 3, 6, 9, and 12 month momntum as predictiors for next month market returns. It predicts whether NIFTY 50 could fall by more than 2% next month."
 )
-    
 
-# NIFTY 50 historical chart
+# Portfolio Performance Chart
 st.subheader('Portfolio Performance', divider='gray')
 st.line_chart(chart_df)
 
 # Display metrics
-st.subheader("Performance Metrics")
-
+st.subheader(f"Performance Metrics - From April 2025 to {today_month_name} {today_year}")
 col1, col2 = st.columns(2)
 
 with col1:
@@ -243,7 +245,7 @@ with col2:
     st.metric("Volatility", f"{benchmark_volatility:.2%}")
     st.metric("Sharpe Ratio", f"{benchmark_sharpe:.2f}")
 
-
+# Random Forest Prediction
 last_date = market_data.index[-1]
 current_month_name = last_date.strftime("%B")
 # Get next month's datetime
@@ -270,7 +272,7 @@ st.markdown(
 )
 st.markdown('<a href="https://quantindia.substack.com/p/predicting-drawdowns-in-nifty-50?r=5b2z4i" target="_blank">View Methodology Details</a>', unsafe_allow_html=True)
 
-
+# Model Training Metrics
 col1, col2 = st.columns(2)
 with col1:
     st.subheader('Training Metrics', divider='gray')

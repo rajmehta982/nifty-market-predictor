@@ -141,6 +141,25 @@ def get_portfolio_data(month_start):
     # Group data by month
     return portfolio_data
 
+RISK_FREE_RATE = 0.06  # Annual risk-free rate
+MONTHS_IN_YEAR = 12
+
+# 1. Annualized Return
+def annualized_return(monthly_returns):
+    compounded = (1 + monthly_returns).prod()
+    n_months = len(monthly_returns)
+    return compounded ** (12 / n_months) - 1
+
+# 2. Annualized Volatility
+def annualized_volatility(monthly_returns):
+    return monthly_returns.std(ddof=1) * np.sqrt(12)
+
+# 3. Sharpe Ratio
+def sharpe_ratio(ann_return, ann_volatility):
+    excess_return = ann_return - RISK_FREE_RATE
+    return excess_return / ann_volatility
+
+
 # Convert to the first day of the current month
 # Get necessary dates
 today = datetime.today()
@@ -149,6 +168,23 @@ today_month_name = pd.to_datetime(today).replace(day=1).strftime("%B")
 
 portfolio_data  = get_portfolio_data(month_start)
 current_portfolio = portfolio_data[portfolio_data['Portfolio Date'] == month_start]
+
+return_df = portfolio_data[portfolio_data['Portfolio Return'].notna()]
+return_df["Portfolio Date"] = pd.to_datetime(return_df["Portfolio Date"], format="%d-%m-%Y")
+# Calculate metrics for Portfolio
+portfolio_returns = return_df['Portfolio Return']
+portfolio_ann_return = annualized_return(portfolio_returns)
+portfolio_volatility = annualized_volatility(portfolio_returns)
+portfolio_sharpe = sharpe_ratio(portfolio_ann_return, portfolio_volatility)
+
+# Calculate metrics for NIFTY 50
+benchmark_returns = return_df['NIFTY 50 Portfolio Return']
+benchmark_ann_return = annualized_return(benchmark_returns)
+benchmark_volatility = annualized_volatility(benchmark_returns)
+benchmark_sharpe = sharpe_ratio(benchmark_ann_return, benchmark_volatility)
+
+chart_df = return_df[['Portfolio Date', 'Portfolio Value', 'NIFTY 50 Portfolio Value']]
+chart_df.set_index('Portfolio Date', inplace=True)
 
 # Display portfolio table
 st.title("Quant India - Systematic Equities Strategy for Retail Indian Investors")
@@ -184,14 +220,29 @@ st.subheader("Momentum-based NIFTY 50 Prediction Model")
 st.markdown(
     "A random forest model trained on momentum features created from 30+ years of monthly NIFTY 50 returns. It uses 1, 3, 6, 9, and 12 month momntum as predictiors for next month market returns. It predicts whether NIFTY 50 could fall by more than 2% next month."
 )
+    
 
 # NIFTY 50 historical chart
-st.subheader('NIFTY 50 Historical Monthly Close Price (from July 1991)', divider='gray')
-st.line_chart(
-    market_data,
-    y='^NSEI',
-    color="#ffaa00",
-)
+st.subheader('Portfolio Performance', divider='gray')
+st.line_chart(chart_df)
+
+# Display metrics
+st.subheader("Performance Metrics")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("### Portfolio")
+    st.metric("Annualized Return", f"{portfolio_ann_return:.2%}")
+    st.metric("Volatility", f"{portfolio_volatility:.2%}")
+    st.metric("Sharpe Ratio", f"{portfolio_sharpe:.2f}")
+
+with col2:
+    st.markdown("### NIFTY 50 Benchmark")
+    st.metric("Annualized Return", f"{benchmark_ann_return:.2%}")
+    st.metric("Volatility", f"{benchmark_volatility:.2%}")
+    st.metric("Sharpe Ratio", f"{benchmark_sharpe:.2f}")
+
 
 last_date = market_data.index[-1]
 current_month_name = last_date.strftime("%B")

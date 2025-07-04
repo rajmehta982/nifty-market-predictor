@@ -7,6 +7,8 @@ import yfinance as yf
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from dateutil.relativedelta import relativedelta
+import statsmodels.api as sm
+
 
 RISK_FREE_RATE = 0.06  # Annual risk-free rate
 MONTHS_IN_YEAR = 12
@@ -160,6 +162,19 @@ def sharpe_ratio(ann_return, ann_volatility):
     excess_return = ann_return - RISK_FREE_RATE
     return excess_return / ann_volatility
 
+def get_alpha_beta(portfolio_returns, benchmark_returns):
+    # Prepare the returns (align index if needed)
+    y = portfolio_returns.values
+    x = benchmark_returns.values
+
+    # Add constant for alpha
+    x_with_const = sm.add_constant(x)
+
+    # Run regression: portfolio return ~ alpha + beta * benchmark return
+    model = sm.OLS(y, x_with_const).fit()
+    alpha, beta = model.params
+    return alpha, beta
+
 
 # Convert to the first day of the current month
 # Get necessary dates
@@ -187,8 +202,20 @@ benchmark_ann_return = annualized_return(benchmark_returns)
 benchmark_volatility = annualized_volatility(benchmark_returns)
 benchmark_sharpe = sharpe_ratio(benchmark_ann_return, benchmark_volatility)
 
+alpha, beta = get_alpha_beta(portfolio_returns, benchmark_returns)
+
 chart_df = return_df[['Portfolio Date', 'Portfolio Value', 'NIFTY 50 Portfolio Value']]
 chart_df.set_index('Portfolio Date', inplace=True)
+
+### Get data and train model
+market_data, last_date_data = get_market_data()
+create_momentum_features(market_data)
+
+training_columns = [
+       'momentum_3_1', 'momentum_6_1','momentum_3_USDINR',
+       'momentum_6_USDINR', 'momentum_1_CAPE','momentum_3_CAPE']
+cv_scores, clf = train_model(market_data, training_columns)
+final_prediction = make_predictions(clf, market_data, training_columns)
 
 # Display portfolio table
 st.title("Quant India - Systematic Equities Strategy for Retail Indian Investors")
@@ -209,15 +236,6 @@ st.subheader(f"📋 Current Portfolio ({today_month_name})")
 st.table(current_portfolio[['Holding', 'Weight']].reset_index(drop=True))
 st.markdown('<a href="https://docs.google.com/spreadsheets/d/10cMWuCXMb5-7tgaHWS5Ef-D0rNNhWSvgElVnY8f4t2c/edit?usp=drive_link" target="_blank">View Full Historical Portfolio</a>', unsafe_allow_html=True)
 
-### Get data and train model
-market_data, last_date_data = get_market_data()
-create_momentum_features(market_data)
-
-training_columns = [
-       'momentum_3_1', 'momentum_6_1','momentum_3_USDINR',
-       'momentum_6_USDINR', 'momentum_1_CAPE','momentum_3_CAPE']
-cv_scores, clf = train_model(market_data, training_columns)
-final_prediction = make_predictions(clf, market_data, training_columns)
 
 # Prediction Model
 st.subheader("Momentum-based NIFTY 50 Prediction Model")
@@ -238,6 +256,8 @@ with col1:
     st.metric("Annualized Return", f"{portfolio_ann_return:.2%}")
     st.metric("Volatility", f"{portfolio_volatility:.2%}")
     st.metric("Sharpe Ratio", f"{portfolio_sharpe:.2f}")
+    st.metric("Alpha", f"{alpha:.2%}")
+    st.metric("Beta", f"{beta:.2f}")
 
 with col2:
     st.markdown("### NIFTY 50 Benchmark")
@@ -246,14 +266,14 @@ with col2:
     st.metric("Sharpe Ratio", f"{benchmark_sharpe:.2f}")
 
 # Random Forest Prediction
-last_date = market_data.index[-1]
-current_month_name = last_date.strftime("%B")
-# Get next month's datetime
-next_month_dt = last_date + relativedelta(months=1)
-# Get full month name
-next_month_name = next_month_dt.strftime("%B")
+# last_date = market_data.index[-1]
+# current_month_name = last_date.strftime("%B")
+# # Get next month's datetime
+# next_month_dt = last_date + relativedelta(months=1)
+# # Get full month name
+# next_month_name = next_month_dt.strftime("%B")
 
-st.subheader(f'Prediction for {next_month_name} end', divider='gray')
+st.subheader(f'Prediction for {today_month_name} end', divider='gray')
 
 if final_prediction[0] == 0:
     st.metric(

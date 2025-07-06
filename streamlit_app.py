@@ -309,7 +309,7 @@ with col1:
     )
     st.metric(
         label=f'Last Available Price Used',
-        value=last_date.strftime("%B %d, %Y")
+        value=market_data.index[-1].strftime("%B %d, %Y")
         
     )
 

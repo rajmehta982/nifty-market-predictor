@@ -3,3 +3,4 @@ pandas
 yfinance
 scikit-learn
 statsmodels
+scipy==1.15.3

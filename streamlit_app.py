@@ -83,7 +83,7 @@ def get_market_data():
 def create_momentum_features(market_data):
     windows = [1, 3, 6]
 
-    # market_data['momentum_1_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(1)
+    market_data['momentum_1_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(1)
     market_data['momentum_3_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(3)
     market_data['momentum_6_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(6)
     # market_data['momentum_9_1'] = market_data['^NSEI'] / market_data['^NSEI'].shift(9)
@@ -212,8 +212,8 @@ market_data, last_date_data = get_market_data()
 create_momentum_features(market_data)
 
 training_columns = [
-       'momentum_3_1', 'momentum_6_1','momentum_3_USDINR',
-       'momentum_6_USDINR', 'momentum_1_CAPE','momentum_3_CAPE']
+       'momentum_1_1','momentum_3_1', 'momentum_6_1',
+       'momentum_1_CAPE']
 cv_scores, clf = train_model(market_data, training_columns)
 final_prediction = make_predictions(clf, market_data, training_columns)
 

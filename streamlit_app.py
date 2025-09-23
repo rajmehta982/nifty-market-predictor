@@ -103,7 +103,7 @@ def train_model(market_data, training_columns):
     market_data['Return'] = market_data['^NSEI'].pct_change()
     market_data['Portfolio'] = initial_value * (1 + market_data['Return']).cumprod()
     market_data['Portfolio'].iloc[0] = initial_value
-    market_data['next_month_return'] = market_data['Return'].shift(1)
+    market_data['next_month_return'] = market_data['Return'].shift(-1)
     market_data.dropna(inplace=True)
     market_data['positive_returns'] = (market_data['next_month_return'] > -0.02).astype(int)
 

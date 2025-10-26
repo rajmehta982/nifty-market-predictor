@@ -99,9 +99,9 @@ current_portfolio = portfolio_data[
     (portfolio_data['Portfolio Date'].dt.month == today.month)
 ]
 
-return_df = portfolio_data[portfolio_data['Portfolio Return'].notna()]
+return_df = portfolio_data[portfolio_data['Quant Portfolio Return'].notna()]
 # Calculate metrics for Portfolio
-portfolio_returns = return_df['Portfolio Return']
+portfolio_returns = return_df['Quant Portfolio Return']
 portfolio_ann_return = annualized_return(portfolio_returns)
 portfolio_volatility = annualized_volatility(portfolio_returns)
 portfolio_sharpe = sharpe_ratio(portfolio_ann_return, portfolio_volatility)
@@ -114,12 +114,25 @@ benchmark_sharpe = sharpe_ratio(benchmark_ann_return, benchmark_volatility)
 
 alpha, beta = get_alpha_beta(portfolio_returns, benchmark_returns)
 
-chart_df = return_df[['Portfolio Date', 'Portfolio Value', 'NIFTY 500 Portfolio Value']]
-chart_df.set_index('Portfolio Date', inplace=True)
+# Create initial row with value 100
+initial_date = return_df['Portfolio Date'].min() - pd.DateOffset(months=1)
+initial_data = pd.DataFrame({
+    'Portfolio Value': [100],
+    'NIFTY 500 Portfolio Value': [100]
+}, index=[initial_date])
 
-### Get data and train model
+# Calculate returns starting from 100
+chart_df = pd.DataFrame({
+    'Portfolio Value': 100 * (1 + return_df['Quant Portfolio Return']).cumprod(),
+    'NIFTY 500 Portfolio Value': 100 * (1 + return_df['NIFTY 500 Portfolio Return']).cumprod()
+})
+
+# Set index and concatenate with initial row
+chart_df.index = return_df['Portfolio Date']
+chart_df = pd.concat([initial_data, chart_df])
+
+### Get market (NIFTY 500) data
 market_data, last_date_data = get_market_data()
-
 
 # Display portfolio table
 st.title("Quant India - Momentum + Quality Systematic Equities Strategy")
@@ -128,7 +141,7 @@ st.markdown(
 )
 
 st.subheader("Methodology")
-st.markdown("Version 2.0 - Updated Sep 2025")
+st.markdown("Version 2.0 - Updated Aug 2025")
 st.markdown(
     "The quantitative factor portfolio methodology is a rule-based algorithm that creates an equal weighted portfolio of 20 stocks which is updated every month. These stocks are ranked and picked based on momentum and quality signals."
 )
@@ -145,7 +158,7 @@ st.subheader('Portfolio Performance', divider='gray')
 st.line_chart(chart_df)
 
 # Display metrics
-st.subheader(f"Performance Metrics - From Sep 2025 to {today_month_name} {today_year}")
+st.subheader(f"Performance Metrics - From Aug 2025 to {today_month_name} {today_year}")
 col1, col2 = st.columns(2)
 
 with col1:

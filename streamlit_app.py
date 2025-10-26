@@ -52,6 +52,7 @@ def get_portfolio_data(month_start):
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
     portfolio_data = pd.read_csv(url)
     portfolio_data['Portfolio Date'] = pd.to_datetime(portfolio_data['Portfolio Date'], format="%d-%m-%Y")
+    portfolio_data = portfolio_data[portfolio_data['Factor Model Version'] == 2.0]
 
     # Group data by month
     return portfolio_data
@@ -127,9 +128,9 @@ st.markdown(
 )
 
 st.subheader("Methodology")
-st.markdown("Version 2.0.0")
+st.markdown("Version 2.0 - Updated Sep 2025")
 st.markdown(
-    "The quantitative factor portfolio methodology is a rule-based algorithm that creates a portfolio of 20 stocks which is updated every month. These stocks are ranked and picked based on momentum, and quality signals "
+    "The quantitative factor portfolio methodology is a rule-based algorithm that creates an equal weighted portfolio of 20 stocks which is updated every month. These stocks are ranked and picked based on momentum and quality signals."
 )
 st.markdown('<a href="https://quantindia.substack.com/p/systematic-equities-strategy-shortcomings" target="_blank">View Methodology Details</a>', unsafe_allow_html=True)
 
